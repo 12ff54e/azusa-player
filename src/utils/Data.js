@@ -191,36 +191,30 @@ export const fetchBiliColleList = async (mid, sid, favList = []) => {
 }
 
 export const fetchFavList = async (mid) => {
-    logger.info("calling fetchFavList")
-    const res = await fetch(URL_FAV_LIST.replace('{mid}', mid).replace('{pn}', 1))
-    const json = await res.json()
-    const data = json.data
+  logger.info('calling fetchFavList');
+  let page_num = 1;
+  const res = await fetch(
+    URL_FAV_LIST.replace('{mid}', mid).replace('{pn}', page_num),
+  );
+  const json = await res.json();
+  const data = json.data;
 
-    const mediaCount = data.info.media_count
-    let totalPagesRequired = 1 + Math.floor(mediaCount / 20)
+  const video_info_promises = data.medias.map((m) => fetchVideoInfo(m.bvid));
+  let has_more = data.has_more;
+  while (has_more) {
+    const next_page = await fetch(
+      URL_FAV_LIST.replace('{mid}', mid).replace('{pn}', ++page_num),
+    );
+    const content = (await next_page.json()).data;
+    content.medias.forEach((m) =>
+      video_info_promises.push(fetchVideoInfo(m.bvid)),
+    );
 
-    const BVidPromises = data.medias.map(m => fetchVideoInfo(m.bvid))
-    const pagesPromises = []
+    has_more = content.has_more;
+  }
 
-    for (let page = 2; page <= totalPagesRequired; page++) {
-        pagesPromises.push(fetch(URL_FAV_LIST.replace('{mid}', mid).replace('{pn}', page)))
-    }
-
-    let videoInfos = []
-    await Promise.all(pagesPromises)
-        .then(async function (v) {
-            // console.log(BVidPromises)
-            for (let index = 0; index < v.length; index++) {
-                await v[index].json().then(js => js.data.medias.map(m => BVidPromises.push(fetchVideoInfo(m.bvid))))
-            }
-
-            await Promise.all(BVidPromises).then(res => {
-                videoInfos = res
-            })
-        })
-
-    return videoInfos
-}
+  return Promise.all(video_info_promises);
+};
 
 // Private Util to extract json according to https://github.com/SocialSisterYi/bilibili-API-collect
 const extractResponseJson = (json, field) => {
