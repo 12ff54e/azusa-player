@@ -101,7 +101,10 @@ function update_menu_item_listener(fav_lists_info: any[]) {
               type: 'basic',
               iconUrl: 'icons/icon-128.png',
               title: '已添加',
-              message: `已将 ${BV} 添加到${fav_name}`,
+              message:
+                n == 0
+                  ? `${BV} 已在 ${fav_name} 中`
+                  : `已将 ${BV} 添加到${fav_name}`,
             });
           })
           .catch((err) => {
